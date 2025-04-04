@@ -14,10 +14,7 @@ st.set_page_config(
 
 with st.sidebar:
     st.title("📂 Upload & Filters")
-
     uploaded_file = st.file_uploader("📄 Upload your .xlsm file", type=["xlsm"])
-
-    image_folder = st.text_input("📁 Enter local image folder path (optional)", value="")
 
     st.markdown("---")
     st.markdown(
@@ -37,6 +34,12 @@ with st.sidebar:
         """,
         unsafe_allow_html=True
     )
+
+def pil_image_to_base64(img):
+    buf = BytesIO()
+    img.save(buf, format="JPEG")
+    byte_im = buf.getvalue()
+    return base64.b64encode(byte_im).decode()
 
 st.markdown("<h1 style='text-align: center; color: #2E8B57;'>Reset Supported Programs</h1>", unsafe_allow_html=True)
 st.markdown("---")
@@ -88,36 +91,25 @@ if uploaded_file:
             st.warning("No 'Store' column available.")
 
     with tab2:
-        reset_chart_df = reset_df[reset_df['Vendor'] == selected_vendor]
-        reset_chart_df = reset_chart_df.groupby('Program').size().reset_index(name='Reset Count')
-        fig = px.bar(reset_chart_df, x='Reset Count', y='Program', orientation='h',
-                     title='Resets / Updates per Program',
-                     template='plotly_dark', color='Reset Count')
-        fig.update_layout(font=dict(color='white'))
-        st.plotly_chart(fig, use_container_width=True)
+        reset_chart_df = reset_df[(reset_df['Vendor'] == selected_vendor) & (reset_df['Program'] == selected_program)]
+        if not reset_chart_df.empty:
+            reset_chart_df = reset_chart_df.groupby('Program').size().reset_index(name='Reset Count')
+            fig = px.bar(reset_chart_df, x='Reset Count', y='Program', orientation='h',
+                         title='Resets / Updates per Program',
+                         template='plotly_dark', color='Reset Count')
+            fig.update_layout(font=dict(color='white'))
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No reset/update data available for this selection.")
 
     st.markdown("---")
 
     st.markdown("### 🖼️ Bay Image")
 
-    def pil_image_to_base64(img):
-        buf = BytesIO()
-        img.save(buf, format="JPEG")
-        byte_im = buf.getvalue()
-        return base64.b64encode(byte_im).decode()
-
     image = None
     image_caption = ""
 
-    if image_folder and os.path.exists(image_folder):
-        for file in os.listdir(image_folder):
-            if file.lower().startswith(selected_vendor.lower()) and file.lower().endswith((".jpg", ".png")):
-                image_path = os.path.join(image_folder, file)
-                image = Image.open(image_path)
-                image_caption = f"From local folder: {file}"
-                break
-
-    elif os.path.exists("images"):
+    if os.path.exists("images"):
         for file in os.listdir("images"):
             if file.lower().startswith(selected_vendor.lower()) and file.lower().endswith((".jpg", ".png")):
                 image_path = os.path.join("images", file)
