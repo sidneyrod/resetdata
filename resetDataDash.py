@@ -3,6 +3,8 @@ import pandas as pd
 import os
 from PIL import Image
 import plotly.express as px
+import base64
+from io import BytesIO
 
 # 🎨 Page setup
 st.set_page_config(
@@ -11,14 +13,15 @@ st.set_page_config(
     layout="wide"
 )
 
+# ================================
+# 🏠 SIDEBAR – Upload
+# ================================
 with st.sidebar:
     st.title("📂 Upload & Filters")
 
-    # Upload Excel or CSV file
-    uploaded_file = st.file_uploader("📄 Upload your data file (.csv or .xlsx)", type=["csv", "xlsx"])
+    uploaded_file = st.file_uploader("📄 Upload your .xlsm file", type=["xlsm"])
 
-    # Optional image upload
-    uploaded_image = st.file_uploader("🖼️ Upload an image (optional)", type=["jpg", "png"])
+    image_folder = st.text_input("📁 Enter local image folder path (optional)", value="")
 
     st.markdown("---")
     st.markdown(
@@ -39,109 +42,139 @@ with st.sidebar:
         unsafe_allow_html=True
     )
 
+# ================================
+# 📊 HEADER
+# ================================
 st.markdown("<h1 style='text-align: center; color: #2E8B57;'>RESET SUPPORTED PROGRAMS</h1>", unsafe_allow_html=True)
 st.markdown("---")
 
+# ================================
+# 📁 PROCESS DATA
+# ================================
 if uploaded_file:
-    ext = os.path.splitext(uploaded_file.name)[-1]
-    reset_df = None
+    xls = pd.ExcelFile(uploaded_file, engine="openpyxl")
+    summary_df = pd.read_excel(xls, sheet_name="Summary")
+    data_df = pd.read_excel(xls, sheet_name="Data")
+    reset_df = pd.read_excel(xls, sheet_name="Reset_Update")
 
-    if ext == ".csv":
-        df = pd.read_csv(uploaded_file)
-    elif ext in [".xls", ".xlsx"]:
-        xls = pd.ExcelFile(uploaded_file, engine="openpyxl")
-        df = pd.read_excel(xls, sheet_name=0)
+    vendors = sorted(data_df['Vendor'].dropna().unique())
+    selected_vendor = st.selectbox("🔎 Select a Vendor", vendors)
 
-        if "Reset_Update" in xls.sheet_names:
-            reset_df = pd.read_excel(xls, sheet_name="Reset_Update")
-    else:
-        st.error("Unsupported file format.")
-        st.stop()
+    vendor_programs = sorted(data_df[data_df['Vendor'] == selected_vendor]['Program'].dropna().unique())
+    selected_program = st.selectbox("🎯 Select a Program", vendor_programs)
 
-    col_f1, col_f2 = st.columns(2)
-    with col_f1:
-        vendors = sorted(df['Vendor'].dropna().unique())
-        selected_vendor = st.selectbox("🔍 Select a Vendor", vendors)
-    with col_f2:
-        vendor_df = df[df['Vendor'] == selected_vendor]
-        programs = sorted(vendor_df['Program'].dropna().unique())
-        selected_program = st.selectbox("🎯 Select a Program", programs)
+    filtered_df = data_df[(data_df['Vendor'] == selected_vendor) & (data_df['Program'] == selected_program)]
 
-    filtered_df = vendor_df[vendor_df['Program'] == selected_program]
-
+    # KPIs
     num_stores = filtered_df['Store'].nunique() if 'Store' in filtered_df.columns else 0
-    num_bags = filtered_df['Bag'].nunique() if 'Bag' in filtered_df.columns else 0
+    num_bays = filtered_df['Bay'].nunique() if 'Bay' in filtered_df.columns else 0
     num_maint = len(filtered_df)
-    avg_maint_per_bag = round(num_maint / num_bags, 2) if num_bags else 0
+    avg_maint_per_bay = round(num_maint / num_bays, 2) if num_bays else 0
+    num_resets = len(reset_df[(reset_df['Vendor'] == selected_vendor) & (reset_df['Program'] == selected_program)])
 
-    num_resets = 0
-    if reset_df is not None:
-        num_resets = len(reset_df[
-            (reset_df['Vendor'] == selected_vendor) &
-            (reset_df['Program'] == selected_program)
-        ])
-
-    st.markdown("### 📊 Overview")
+    st.markdown("### 📈 Overview")
     col1, col2, col3, col4, col5 = st.columns(5)
-    col1.metric("🏪 Number of Stores", num_stores)
-    col2.metric("👜 Number of Bags", num_bags)
-    col3.metric("🛠️ Maintenance Records", num_maint)
-    col4.metric("📊 Avg. Maint. per Bag", avg_maint_per_bag)
+    col1.metric("🏪 Stores", num_stores)
+    col2.metric("📦 Bays", num_bays)
+    col3.metric("🛠️ Maintenances", num_maint)
+    col4.metric("📊 Avg. per Bay", avg_maint_per_bay)
     col5.metric("🔁 Resets / Updates", num_resets)
 
     st.markdown("---")
 
+    # ================================
+    # 📊 CHARTS
+    # ================================
     st.markdown("### 📉 Charts")
-    tab1, tab2 = st.tabs(["📊 Maintenance per Store", "🔁 Resets per Program"])
+    tab1, tab2 = st.tabs(["📊 Maintenance by Store", "🔁 Resets by Program"])
 
     with tab1:
         if 'Store' in filtered_df.columns:
-            store_chart = filtered_df.groupby('Store').size().reset_index(name='Maintenance Count')
-            fig = px.bar(store_chart, x='Store', y='Maintenance Count',
-                         title='<b>Maintenance Count per Store</b>',
-                         labels={'Store': '<b>Store</b>', 'Maintenance Count': '<b>Maintenance Count</b>'},
+            chart_df = filtered_df.groupby('Store').size().reset_index(name='Maintenance Count')
+            fig = px.bar(chart_df, x='Store', y='Maintenance Count',
+                         title='Maintenance Count per Store',
                          template='plotly_dark',
                          color='Maintenance Count',
                          color_continuous_scale='Blues')
-            fig.update_layout(
-                title_font_size=20,
-                font=dict(size=12, color='white'),
-                xaxis_title_font=dict(size=14, color='white'),
-                yaxis_title_font=dict(size=14, color='white'),
-                plot_bgcolor='rgba(0,0,0,0)',
-                paper_bgcolor='rgba(0,0,0,0)'
-            )
+            fig.update_layout(font=dict(color='white'))
             st.plotly_chart(fig, use_container_width=True)
         else:
-            st.warning("No 'Store' column found for plotting.")
+            st.warning("No 'Store' column available.")
 
     with tab2:
-        if reset_df is not None:
-            vendor_resets = reset_df[reset_df['Vendor'] == selected_vendor]
-            if not vendor_resets.empty:
-                reset_by_program = vendor_resets.groupby('Program').size().reset_index(name='Reset Count')
-                reset_by_program = reset_by_program.sort_values(by='Reset Count', ascending=True)
-
-                fig = px.bar(reset_by_program,
-                             x='Reset Count', y='Program', orientation='h',
-                             title=f"Resets / Updates for {selected_vendor}",
-                             template='plotly_dark',
-                             color='Reset Count',
-                             color_continuous_scale='Aggrnyl')
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("No Reset/Update records found for this vendor.")
-        else:
-            st.warning("No Reset_Update data found.")
+        reset_chart_df = reset_df[reset_df['Vendor'] == selected_vendor]
+        reset_chart_df = reset_chart_df.groupby('Program').size().reset_index(name='Reset Count')
+        fig = px.bar(reset_chart_df, x='Reset Count', y='Program', orientation='h',
+                     title='Resets / Updates per Program',
+                     template='plotly_dark', color='Reset Count')
+        fig.update_layout(font=dict(color='white'))
+        st.plotly_chart(fig, use_container_width=True)
 
     st.markdown("---")
 
-    st.markdown("### 🖼️ Program Image")
-    if uploaded_image:
-        image = Image.open(uploaded_image)
-        st.image(image, caption="Uploaded Image", use_column_width=True)
+    # ================================
+    # 🖼️ VENDOR IMAGE (LOCAL or REPO)
+    # ================================
+    st.markdown("### 🖼️ Vendor Image")
+
+    def pil_image_to_base64(img):
+        buf = BytesIO()
+        img.save(buf, format="JPEG")
+        byte_im = buf.getvalue()
+        return base64.b64encode(byte_im).decode()
+
+    image = None
+    image_caption = ""
+
+    # PRIORIDADE 1: pasta local
+    if image_folder and os.path.exists(image_folder):
+        for file in os.listdir(image_folder):
+            if file.lower().startswith(selected_vendor.lower()) and file.lower().endswith((".jpg", ".png")):
+                image_path = os.path.join(image_folder, file)
+                image = Image.open(image_path)
+                image_caption = f"From local folder: {file}"
+                break
+
+    # PRIORIDADE 2: pasta images/ do repositório
+    elif os.path.exists("images"):
+        for file in os.listdir("images"):
+            if file.lower().startswith(selected_vendor.lower()) and file.lower().endswith((".jpg", ".png")):
+                image_path = os.path.join("images", file)
+                image = Image.open(image_path)
+                image_caption = f"From repository: {file}"
+                break
+
+    # Exibir imagem
+    if image:
+        encoded_img = pil_image_to_base64(image)
+        st.markdown(
+            f"""
+            <div style='
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                margin-top: 20px;
+                margin-bottom: 10px;
+            '>
+                <img src='data:image/jpeg;base64,{encoded_img}'
+                     alt='{image_caption}'
+                     style='
+                        max-width: 600px;
+                        border-radius: 15px;
+                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+                        transition: transform 0.3s ease;
+                        cursor: zoom-in;
+                    '
+                    onmouseover="this.style.transform='scale(1.04)'"
+                    onmouseout="this.style.transform='scale(1)'"
+                    title='{image_caption}'>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        st.caption(image_caption)
     else:
-        st.info("Upload an image to display it here.")
+        st.info(f"No image found for vendor '{selected_vendor}'.")
 
 else:
-    st.info("Please upload a valid data file in the sidebar.")
+    st.info("Please upload a valid .xlsm file in the sidebar.")
