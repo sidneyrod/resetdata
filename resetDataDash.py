@@ -6,16 +6,12 @@ import plotly.express as px
 import base64
 from io import BytesIO
 
-# 🎨 Page setup
 st.set_page_config(
     page_title="ReSet Dashboard",
     page_icon="kent_icon.ico",
     layout="wide"
 )
 
-# ================================
-# 🏠 SIDEBAR – Upload
-# ================================
 with st.sidebar:
     st.title("📂 Upload & Filters")
 
@@ -42,15 +38,9 @@ with st.sidebar:
         unsafe_allow_html=True
     )
 
-# ================================
-# 📊 HEADER
-# ================================
-st.markdown("<h1 style='text-align: center; color: #2E8B57;'>RESET SUPPORTED PROGRAMS</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; color: #2E8B57;'>Reset Supported Programs</h1>", unsafe_allow_html=True)
 st.markdown("---")
 
-# ================================
-# 📁 PROCESS DATA
-# ================================
 if uploaded_file:
     xls = pd.ExcelFile(uploaded_file, engine="openpyxl")
     summary_df = pd.read_excel(xls, sheet_name="Summary")
@@ -65,7 +55,6 @@ if uploaded_file:
 
     filtered_df = data_df[(data_df['Vendor'] == selected_vendor) & (data_df['Program'] == selected_program)]
 
-    # KPIs
     num_stores = filtered_df['Store'].nunique() if 'Store' in filtered_df.columns else 0
     num_bays = filtered_df['Bay'].nunique() if 'Bay' in filtered_df.columns else 0
     num_maint = len(filtered_df)
@@ -82,9 +71,6 @@ if uploaded_file:
 
     st.markdown("---")
 
-    # ================================
-    # 📊 CHARTS
-    # ================================
     st.markdown("### 📉 Charts")
     tab1, tab2 = st.tabs(["📊 Maintenance by Store", "🔁 Resets by Program"])
 
@@ -112,10 +98,7 @@ if uploaded_file:
 
     st.markdown("---")
 
-    # ================================
-    # 🖼️ VENDOR IMAGE (LOCAL or REPO)
-    # ================================
-    st.markdown("### 🖼️ Vendor Image")
+    st.markdown("### 🖼️ Bay Image")
 
     def pil_image_to_base64(img):
         buf = BytesIO()
@@ -126,7 +109,6 @@ if uploaded_file:
     image = None
     image_caption = ""
 
-    # PRIORIDADE 1: pasta local
     if image_folder and os.path.exists(image_folder):
         for file in os.listdir(image_folder):
             if file.lower().startswith(selected_vendor.lower()) and file.lower().endswith((".jpg", ".png")):
@@ -135,7 +117,6 @@ if uploaded_file:
                 image_caption = f"From local folder: {file}"
                 break
 
-    # PRIORIDADE 2: pasta images/ do repositório
     elif os.path.exists("images"):
         for file in os.listdir("images"):
             if file.lower().startswith(selected_vendor.lower()) and file.lower().endswith((".jpg", ".png")):
@@ -144,7 +125,6 @@ if uploaded_file:
                 image_caption = f"From repository: {file}"
                 break
 
-    # Exibir imagem
     if image:
         encoded_img = pil_image_to_base64(image)
         st.markdown(
