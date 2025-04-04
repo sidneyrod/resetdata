@@ -11,9 +11,6 @@ st.set_page_config(
     layout="wide"
 )
 
-# ================================
-# 🏠 SIDEBAR – Secure Upload & Filters
-# ================================
 with st.sidebar:
     st.title("📂 Upload & Filters")
 
@@ -42,15 +39,9 @@ with st.sidebar:
         unsafe_allow_html=True
     )
 
-# ================================
-# 📊 HEADER
-# ================================
 st.markdown("<h1 style='text-align: center; color: #2E8B57;'>RESET SUPPORTED PROGRAMS</h1>", unsafe_allow_html=True)
 st.markdown("---")
 
-# ================================
-# 📅 FILE PROCESSING
-# ================================
 if uploaded_file:
     ext = os.path.splitext(uploaded_file.name)[-1]
     reset_df = None
@@ -67,7 +58,6 @@ if uploaded_file:
         st.error("Unsupported file format.")
         st.stop()
 
-    # Filters
     col_f1, col_f2 = st.columns(2)
     with col_f1:
         vendors = sorted(df['Vendor'].dropna().unique())
@@ -79,9 +69,6 @@ if uploaded_file:
 
     filtered_df = vendor_df[vendor_df['Program'] == selected_program]
 
-    # ================================
-    # 📅 METRICS
-    # ================================
     num_stores = filtered_df['Store'].nunique() if 'Store' in filtered_df.columns else 0
     num_bags = filtered_df['Bag'].nunique() if 'Bag' in filtered_df.columns else 0
     num_maint = len(filtered_df)
@@ -104,9 +91,6 @@ if uploaded_file:
 
     st.markdown("---")
 
-    # ================================
-    # 📊 CHARTS WITH TABS
-    # ================================
     st.markdown("### 📉 Charts")
     tab1, tab2 = st.tabs(["📊 Maintenance per Store", "🔁 Resets per Program"])
 
@@ -152,9 +136,6 @@ if uploaded_file:
 
     st.markdown("---")
 
-    # ================================
-    # 🖼️ IMAGE DISPLAY
-    # ================================
     st.markdown("### 🖼️ Program Image")
     if uploaded_image:
         image = Image.open(uploaded_image)
