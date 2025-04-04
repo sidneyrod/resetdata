@@ -12,35 +12,35 @@ st.set_page_config(
 )
 
 # ================================
-# 🎛️ SIDEBAR – File paths and filters
+# 🏠 SIDEBAR – Secure Upload & Filters
 # ================================
 with st.sidebar:
     st.title("📂 Upload & Filters")
 
-    # File path input
-    excel_path = st.text_input("📄 Enter data file path (.csv or .xlsx)", value="")
+    # Upload Excel or CSV file
+    uploaded_file = st.file_uploader("📄 Upload your data file (.csv or .xlsx)", type=["csv", "xlsx"])
 
-    # Image folder path
-    image_folder = st.text_input("🖼️ Enter image folder path", value="")
+    # Optional image upload
+    uploaded_image = st.file_uploader("🖼️ Upload an image (optional)", type=["jpg", "png"])
 
     st.markdown("---")
     st.markdown(
-    """
-    <div style='
-        padding: 10px;
-        background-color: #2E8B57;
-        border-radius: 8px;
-        color: white;
-        text-align: center;
-        font-weight: bold;
-        font-size: 14px;
-        margin-top: 20px;
-    '>
-        🚀 Developed by Reset Moncton Team
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+        """
+        <div style='
+            padding: 10px;
+            background-color: #2E8B57;
+            border-radius: 8px;
+            color: white;
+            text-align: center;
+            font-weight: bold;
+            font-size: 14px;
+            margin-top: 20px;
+        '>
+            🚀 Developed by Reset Moncton Team
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 # ================================
 # 📊 HEADER
@@ -49,48 +49,44 @@ st.markdown("<h1 style='text-align: center; color: #2E8B57;'>RESET SUPPORTED PRO
 st.markdown("---")
 
 # ================================
-# 📁 File processing
+# 📅 FILE PROCESSING
 # ================================
-if os.path.exists(excel_path):
-    ext = os.path.splitext(excel_path)[-1]
-    reset_df = None  # placeholder for Reset_Update
+if uploaded_file:
+    ext = os.path.splitext(uploaded_file.name)[-1]
+    reset_df = None
 
-    # Excel or CSV
     if ext == ".csv":
-        df = pd.read_csv(excel_path)
+        df = pd.read_csv(uploaded_file)
     elif ext in [".xls", ".xlsx"]:
-        xls = pd.ExcelFile(excel_path, engine="openpyxl")
+        xls = pd.ExcelFile(uploaded_file, engine="openpyxl")
         df = pd.read_excel(xls, sheet_name=0)
 
-        # Try loading Reset_Update sheet
         if "Reset_Update" in xls.sheet_names:
             reset_df = pd.read_excel(xls, sheet_name="Reset_Update")
     else:
-        st.error("Unsupported file format. Please use .csv or .xlsx.")
+        st.error("Unsupported file format.")
         st.stop()
 
     # Filters
     col_f1, col_f2 = st.columns(2)
     with col_f1:
         vendors = sorted(df['Vendor'].dropna().unique())
-        selected_vendor = st.selectbox("🔎 Select a Vendor", vendors)
+        selected_vendor = st.selectbox("🔍 Select a Vendor", vendors)
     with col_f2:
         vendor_df = df[df['Vendor'] == selected_vendor]
         programs = sorted(vendor_df['Program'].dropna().unique())
         selected_program = st.selectbox("🎯 Select a Program", programs)
 
-    # Apply filters
     filtered_df = vendor_df[vendor_df['Program'] == selected_program]
 
     # ================================
-    # 📌 METRICS CARDS (with Resets/Updates)
+    # 📅 METRICS
     # ================================
     num_stores = filtered_df['Store'].nunique() if 'Store' in filtered_df.columns else 0
     num_bags = filtered_df['Bag'].nunique() if 'Bag' in filtered_df.columns else 0
     num_maint = len(filtered_df)
     avg_maint_per_bag = round(num_maint / num_bags, 2) if num_bags else 0
 
-    # Count Reset/Update
     num_resets = 0
     if reset_df is not None:
         num_resets = len(reset_df[
@@ -98,7 +94,7 @@ if os.path.exists(excel_path):
             (reset_df['Program'] == selected_program)
         ])
 
-    st.markdown("### 📈 Overview")
+    st.markdown("### 📊 Overview")
     col1, col2, col3, col4, col5 = st.columns(5)
     col1.metric("🏪 Number of Stores", num_stores)
     col2.metric("👜 Number of Bags", num_bags)
@@ -109,19 +105,28 @@ if os.path.exists(excel_path):
     st.markdown("---")
 
     # ================================
-    # 📊 INTERACTIVE CHARTS with TABS
+    # 📊 CHARTS WITH TABS
     # ================================
     st.markdown("### 📉 Charts")
-
     tab1, tab2 = st.tabs(["📊 Maintenance per Store", "🔁 Resets per Program"])
 
     with tab1:
         if 'Store' in filtered_df.columns:
             store_chart = filtered_df.groupby('Store').size().reset_index(name='Maintenance Count')
             fig = px.bar(store_chart, x='Store', y='Maintenance Count',
-                         title='Maintenance Count per Store',
-                         labels={'Maintenance Count': 'Total'},
-                         template='plotly_white')
+                         title='<b>Maintenance Count per Store</b>',
+                         labels={'Store': '<b>Store</b>', 'Maintenance Count': '<b>Maintenance Count</b>'},
+                         template='plotly_dark',
+                         color='Maintenance Count',
+                         color_continuous_scale='Blues')
+            fig.update_layout(
+                title_font_size=20,
+                font=dict(size=12, color='white'),
+                xaxis_title_font=dict(size=14, color='white'),
+                yaxis_title_font=dict(size=14, color='white'),
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)'
+            )
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.warning("No 'Store' column found for plotting.")
@@ -134,9 +139,7 @@ if os.path.exists(excel_path):
                 reset_by_program = reset_by_program.sort_values(by='Reset Count', ascending=True)
 
                 fig = px.bar(reset_by_program,
-                             x='Reset Count',
-                             y='Program',
-                             orientation='h',
+                             x='Reset Count', y='Program', orientation='h',
                              title=f"Resets / Updates for {selected_vendor}",
                              template='plotly_dark',
                              color='Reset Count',
@@ -150,17 +153,14 @@ if os.path.exists(excel_path):
     st.markdown("---")
 
     # ================================
-    # 🖼️ VENDOR IMAGE
+    # 🖼️ IMAGE DISPLAY
     # ================================
     st.markdown("### 🖼️ Program Image")
-    image_name = selected_vendor.strip() + ".jpg"
-    image_path = os.path.join(image_folder, image_name)
-
-    if os.path.exists(image_path):
-        image = Image.open(image_path)
-        st.image(image, caption=f"Image for {selected_vendor}", use_column_width=True)
+    if uploaded_image:
+        image = Image.open(uploaded_image)
+        st.image(image, caption="Uploaded Image", use_column_width=True)
     else:
-        st.info(f"No image found for '{selected_vendor}'.")
+        st.info("Upload an image to display it here.")
 
 else:
-    st.info("Please enter a valid file path in the sidebar.")
+    st.info("Please upload a valid data file in the sidebar.")
