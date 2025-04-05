@@ -6,16 +6,19 @@ import plotly.express as px
 import base64
 from io import BytesIO
 from datetime import datetime
+import time
 
+# ========= Page Configuration =========
 st.set_page_config(
     page_title="ReSet Dashboard",
     page_icon="kent_icon.ico",
     layout="wide"
 )
 
+# ========= Sidebar =========
 with st.sidebar:
     st.image("assets/logo_kent.jpeg", width=250)
-    
+
     st.markdown("### 📁 Upload & Filters")
     uploaded_file = st.file_uploader("📄 Upload your .xlsm file", type=["xlsm"])
 
@@ -37,21 +40,36 @@ with st.sidebar:
         unsafe_allow_html=True
     )
 
+# ========= Main Title =========
 st.markdown("<h1 style='text-align: center; color: #2E8B57;'>Reset Supported Programs</h1>", unsafe_allow_html=True)
 st.markdown("---")
 
+# ========= Helper =========
 def pil_image_to_base64(img):
     buf = BytesIO()
     img.save(buf, format="JPEG")
     byte_im = buf.getvalue()
     return base64.b64encode(byte_im).decode()
 
+
+# ========= Logic =========
 if uploaded_file:
+    # Progress Bar
+    progress_text = "🔄 Loading and processing file. Please wait..."
+    progress_bar = st.progress(0, text=progress_text)
+
+    time.sleep(0.3)
+    progress_bar.progress(10, text=progress_text)
     xls = pd.ExcelFile(uploaded_file, engine="openpyxl")
+
+    time.sleep(0.3)
+    progress_bar.progress(30, text=progress_text)
     summary_df = pd.read_excel(xls, sheet_name="Summary")
     data_df = pd.read_excel(xls, sheet_name="Data")
     reset_df = pd.read_excel(xls, sheet_name="Reset_Update")
 
+    time.sleep(0.3)
+    progress_bar.progress(50, text=progress_text)
     if 'FinishTime' in data_df.columns:
         data_df['FinishTime'] = pd.to_datetime(data_df['FinishTime'], errors='coerce', dayfirst=True)
 
@@ -61,10 +79,18 @@ if uploaded_file:
     vendor_programs = sorted(data_df[data_df['Vendor'] == selected_vendor]['Program'].dropna().unique())
     selected_program = st.selectbox("🎯 Select a Program", vendor_programs)
 
+    time.sleep(0.3)
+    progress_bar.progress(70, text=progress_text)
     filtered_df = data_df[
         (data_df['Vendor'] == selected_vendor) & (data_df['Program'] == selected_program)
     ]
 
+    time.sleep(0.3)
+    progress_bar.progress(100, text="✅ File loaded successfully!")
+    time.sleep(1.5)
+    progress_bar.empty()
+
+    # ========= KPIs =========
     num_stores = filtered_df['Store'].nunique() if 'Store' in filtered_df.columns else 0
     num_bays = filtered_df['Bay'].nunique() if 'Bay' in filtered_df.columns else 0
     num_maint = len(filtered_df)
@@ -114,6 +140,7 @@ if uploaded_file:
         else:
             st.info("No reset/update data available for this selection.")
 
+    # ========= Bay Image =========
     st.markdown("---")
     st.markdown("### 🖼️ Bay Image")
 
