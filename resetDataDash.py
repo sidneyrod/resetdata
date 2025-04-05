@@ -6,12 +6,14 @@ import plotly.express as px
 import base64
 from io import BytesIO
 
+# 🎨 Configuração da página
 st.set_page_config(
     page_title="ReSet Dashboard",
     page_icon="kent_icon.ico",
     layout="wide"
 )
 
+# 📂 SIDEBAR
 with st.sidebar:
     st.title("📂 Upload & Filters")
     uploaded_file = st.file_uploader("📄 Upload your .xlsm file", type=["xlsm"])
@@ -35,15 +37,18 @@ with st.sidebar:
         unsafe_allow_html=True
     )
 
+# Função para converter imagem PIL em base64
 def pil_image_to_base64(img):
     buf = BytesIO()
     img.save(buf, format="JPEG")
     byte_im = buf.getvalue()
     return base64.b64encode(byte_im).decode()
 
+# 🧾 Título principal
 st.markdown("<h1 style='text-align: center; color: #2E8B57;'>Reset Supported Programs</h1>", unsafe_allow_html=True)
 st.markdown("---")
 
+# 📊 PROCESSAMENTO
 if uploaded_file:
     xls = pd.ExcelFile(uploaded_file, engine="openpyxl")
     summary_df = pd.read_excel(xls, sheet_name="Summary")
@@ -58,6 +63,7 @@ if uploaded_file:
 
     filtered_df = data_df[(data_df['Vendor'] == selected_vendor) & (data_df['Program'] == selected_program)]
 
+    # KPIs
     num_stores = filtered_df['Store'].nunique() if 'Store' in filtered_df.columns else 0
     num_bays = filtered_df['Bay'].nunique() if 'Bay' in filtered_df.columns else 0
     num_maint = len(filtered_df)
@@ -74,6 +80,7 @@ if uploaded_file:
 
     st.markdown("---")
 
+    # Gráficos
     st.markdown("### 📉 Charts")
     tab1, tab2 = st.tabs(["📊 Maintenance by Store", "🔁 Resets by Program"])
 
@@ -104,6 +111,7 @@ if uploaded_file:
 
     st.markdown("---")
 
+    # Imagem
     st.markdown("### 🖼️ Bay Image")
 
     image = None
@@ -111,7 +119,11 @@ if uploaded_file:
 
     if os.path.exists("images"):
         for file in os.listdir("images"):
-            if file.lower().startswith(selected_vendor.lower()) and file.lower().endswith((".jpg", ".png")):
+            # Normaliza nomes para comparação
+            filename_no_ext = os.path.splitext(file)[0].strip().lower()
+            selected_program_normalized = selected_program.strip().lower()
+
+            if filename_no_ext == selected_program_normalized and file.lower().endswith((".jpg", ".png")):
                 image_path = os.path.join("images", file)
                 image = Image.open(image_path)
                 image_caption = f"From repository: {file}"
@@ -146,7 +158,7 @@ if uploaded_file:
         )
         st.caption(image_caption)
     else:
-        st.info(f"No image found for vendor '{selected_vendor}'.")
+        st.info(f"No image found for program '{selected_program}'.")
 
 else:
     st.info("Please upload a valid .xlsm file in the sidebar.")
