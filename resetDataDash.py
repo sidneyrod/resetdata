@@ -9,7 +9,7 @@ from datetime import datetime
 
 st.set_page_config(
     page_title="ReSet Dashboard",
-    page_icon="📊",
+    page_icon="kent_icon.ico",
     layout="wide"
 )
 
