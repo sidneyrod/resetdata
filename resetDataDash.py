@@ -219,4 +219,27 @@ if uploaded_file:
         st.info(f"No image found for program '{selected_program}'.")
 
 else:
-    st.info("📄 Please upload a valid .xlsm, .xlsx, or .csv file in the sidebar to get started.")
+    st.markdown(
+        """
+        <div style='
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 30px;
+            margin-bottom: 30px;
+        '>
+            <div style='
+                background-color: #0f2c3f;
+                color: white;
+                padding: 20px 30px;
+                border-radius: 12px;
+                font-size: 16px;
+                font-weight: 500;
+                box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            '>
+                📄 Please upload a valid <strong>.xlsm</strong>, <strong>.xlsx</strong>, or <strong>.csv</strong> file in the sidebar to get started.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
