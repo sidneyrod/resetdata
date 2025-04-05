@@ -6,14 +6,12 @@ import plotly.express as px
 import base64
 from io import BytesIO
 
-# 🎨 Configuração da página
 st.set_page_config(
     page_title="ReSet Dashboard",
     page_icon="kent_icon.ico",
     layout="wide"
 )
 
-# 📂 SIDEBAR
 with st.sidebar:
     st.title("📂 Upload & Filters")
     uploaded_file = st.file_uploader("📄 Upload your .xlsm file", type=["xlsm"])
@@ -37,18 +35,15 @@ with st.sidebar:
         unsafe_allow_html=True
     )
 
-# Função para converter imagem PIL em base64
 def pil_image_to_base64(img):
     buf = BytesIO()
     img.save(buf, format="JPEG")
     byte_im = buf.getvalue()
     return base64.b64encode(byte_im).decode()
 
-# 🧾 Título principal
 st.markdown("<h1 style='text-align: center; color: #2E8B57;'>Reset Supported Programs</h1>", unsafe_allow_html=True)
 st.markdown("---")
 
-# 📊 PROCESSAMENTO
 if uploaded_file:
     xls = pd.ExcelFile(uploaded_file, engine="openpyxl")
     summary_df = pd.read_excel(xls, sheet_name="Summary")
@@ -63,7 +58,6 @@ if uploaded_file:
 
     filtered_df = data_df[(data_df['Vendor'] == selected_vendor) & (data_df['Program'] == selected_program)]
 
-    # KPIs
     num_stores = filtered_df['Store'].nunique() if 'Store' in filtered_df.columns else 0
     num_bays = filtered_df['Bay'].nunique() if 'Bay' in filtered_df.columns else 0
     num_maint = len(filtered_df)
@@ -80,22 +74,23 @@ if uploaded_file:
 
     st.markdown("---")
 
-    # Gráficos
     st.markdown("### 📉 Charts")
-    tab1, tab2 = st.tabs(["📊 Maintenance by Store", "🔁 Resets by Program"])
+    tab1, tab2 = st.tabs(["📅 Maintenance by Month", "🔁 Resets by Program"])
 
     with tab1:
-        if 'Store' in filtered_df.columns:
-            chart_df = filtered_df.groupby('Store').size().reset_index(name='Maintenance Count')
-            fig = px.bar(chart_df, x='Store', y='Maintenance Count',
-                         title='Maintenance Count per Store',
+        if 'FinishTime' in filtered_df.columns:
+            filtered_df['FinishTime'] = pd.to_datetime(filtered_df['FinishTime'], errors='coerce', dayfirst=True)
+            filtered_df['Month'] = filtered_df['FinishTime'].dt.to_period('M').astype(str)
+            month_chart_df = filtered_df.groupby('Month').size().reset_index(name='Maintenance Count')
+            fig = px.bar(month_chart_df, x='Month', y='Maintenance Count',
+                         title='Maintenance Count per Month',
                          template='plotly_dark',
                          color='Maintenance Count',
                          color_continuous_scale='Blues')
-            fig.update_layout(font=dict(color='white'))
+            fig.update_layout(font=dict(color='white'), xaxis_title="Month", yaxis_title="Maintenance Count")
             st.plotly_chart(fig, use_container_width=True)
         else:
-            st.warning("No 'Store' column available.")
+            st.warning("No 'FinishTime' column available for time-based analysis.")
 
     with tab2:
         reset_chart_df = reset_df[(reset_df['Vendor'] == selected_vendor) & (reset_df['Program'] == selected_program)]
@@ -111,7 +106,6 @@ if uploaded_file:
 
     st.markdown("---")
 
-    # Imagem
     st.markdown("### 🖼️ Bay Image")
 
     image = None
@@ -119,11 +113,7 @@ if uploaded_file:
 
     if os.path.exists("images"):
         for file in os.listdir("images"):
-            # Normaliza nomes para comparação
-            filename_no_ext = os.path.splitext(file)[0].strip().lower()
-            selected_program_normalized = selected_program.strip().lower()
-
-            if filename_no_ext == selected_program_normalized and file.lower().endswith((".jpg", ".png")):
+            if file.lower().startswith(selected_program.lower()) and file.lower().endswith((".jpg", ".png")):
                 image_path = os.path.join("images", file)
                 image = Image.open(image_path)
                 image_caption = f"From repository: {file}"
@@ -159,6 +149,5 @@ if uploaded_file:
         st.caption(image_caption)
     else:
         st.info(f"No image found for program '{selected_program}'.")
-
 else:
     st.info("Please upload a valid .xlsm file in the sidebar.")
