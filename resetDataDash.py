@@ -7,19 +7,15 @@ import base64
 from io import BytesIO
 from datetime import datetime
 
-# ========= Page Configuration =========
 st.set_page_config(
     page_title="ReSet Dashboard",
     page_icon="📊",
     layout="wide"
 )
 
-# ========= Sidebar =========
 with st.sidebar:
-    # Company Logo
-    st.image("assets/logo_kent.jpeg", use_container_width=True)
+    st.image("assets/logo_kent.jpeg", width=250)
     
-    # Upload
     st.markdown("### 📁 Upload & Filters")
     uploaded_file = st.file_uploader("📄 Upload your .xlsm file", type=["xlsm"])
 
@@ -41,30 +37,24 @@ with st.sidebar:
         unsafe_allow_html=True
     )
 
-# ========= Main Title =========
 st.markdown("<h1 style='text-align: center; color: #2E8B57;'>Reset Supported Programs</h1>", unsafe_allow_html=True)
 st.markdown("---")
 
-# ========= Image Encode Helper =========
 def pil_image_to_base64(img):
     buf = BytesIO()
     img.save(buf, format="JPEG")
     byte_im = buf.getvalue()
     return base64.b64encode(byte_im).decode()
 
-# ========= Logic =========
 if uploaded_file:
-    # Load Excel
     xls = pd.ExcelFile(uploaded_file, engine="openpyxl")
     summary_df = pd.read_excel(xls, sheet_name="Summary")
     data_df = pd.read_excel(xls, sheet_name="Data")
     reset_df = pd.read_excel(xls, sheet_name="Reset_Update")
 
-    # Parse FinishTime to datetime
     if 'FinishTime' in data_df.columns:
         data_df['FinishTime'] = pd.to_datetime(data_df['FinishTime'], errors='coerce', dayfirst=True)
 
-    # Filters
     vendors = sorted(data_df['Vendor'].dropna().unique())
     selected_vendor = st.selectbox("🔎 Select a Vendor", vendors)
 
@@ -75,7 +65,6 @@ if uploaded_file:
         (data_df['Vendor'] == selected_vendor) & (data_df['Program'] == selected_program)
     ]
 
-    # KPIs
     num_stores = filtered_df['Store'].nunique() if 'Store' in filtered_df.columns else 0
     num_bays = filtered_df['Bay'].nunique() if 'Bay' in filtered_df.columns else 0
     num_maint = len(filtered_df)
@@ -96,7 +85,6 @@ if uploaded_file:
     st.markdown("### 📈 Charts")
     tab1, tab2 = st.tabs(["📊 Maintenance by Month", "🔁 Resets by Program"])
 
-    # Tab 1: Maintenance by Month
     with tab1:
         if 'FinishTime' in filtered_df.columns:
             month_df = filtered_df.dropna(subset=['FinishTime'])
@@ -112,7 +100,6 @@ if uploaded_file:
         else:
             st.warning("Column 'FinishTime' not found.")
 
-    # Tab 2: Resets by Program
     with tab2:
         reset_chart_df = reset_df[
             (reset_df['Vendor'] == selected_vendor) & (reset_df['Program'] == selected_program)
@@ -127,7 +114,6 @@ if uploaded_file:
         else:
             st.info("No reset/update data available for this selection.")
 
-    # Bay Image
     st.markdown("---")
     st.markdown("### 🖼️ Bay Image")
 
