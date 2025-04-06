@@ -13,25 +13,27 @@ st.set_page_config(page_title="ReSet Dashboard", page_icon="kent_icon.ico", layo
 with st.sidebar:
     st.markdown("### 📁 Upload & Filters")
     uploaded_file = st.file_uploader("📄 Upload your .xlsm, .xlsx or .csv file", type=["xlsm", "xlsx", "csv"])
-
     st.markdown("---")
-    st.markdown("""
-    <div style='
-        background: linear-gradient(145deg, #2E8B57, #3fa76c);
-        padding: 15px;
-        border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        color: white;
-        text-align: center;
-        font-size: 15px;
-        line-height: 1.6;
-        margin-top: 20px;
-    '>
-        <div style="font-size: 22px; margin-bottom: 8px;">✨ Team</div>
-        <div>📝 <strong>Designed by</strong><br>Gabriela Reis</div>
-        <div style="margin-top: 8px;">💻 <strong>Developed by</strong><br>Sidney Rodrigues</div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div style='
+            background: linear-gradient(145deg, #2E8B57, #3fa76c);
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            color: white;
+            text-align: center;
+            font-size: 15px;
+            line-height: 1.6;
+            margin-top: 20px;
+        '>
+            <div style="font-size: 22px; margin-bottom: 8px;">✨ Team</div>
+            <div>📝 <strong>Designed by</strong><br>Gabriela Reis</div>
+            <div style="margin-top: 8px;">💻 <strong>Developed by</strong><br>Sidney Rodrigues</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 # Helpers
 def image_to_base64(path):
@@ -59,7 +61,6 @@ def read_file(file):
 # Header
 logo_base64 = image_to_base64("assets/logo_kent.jpeg")
 col1, col2, col3 = st.columns([1, 6, 1])
-
 with col2:
     st.markdown(
         f"""
@@ -75,14 +76,14 @@ with col2:
             <h1 style='color: #2E8B57; font-weight: 700; font-size: 2.4em; margin: 0;'>Reset Supported Programs</h1>
         </div>
         <hr style='border: 1px solid #2E8B57; margin-top: 10px; width: 100%;'>
-        """, unsafe_allow_html=True
+        """,
+        unsafe_allow_html=True
     )
 
 # Main Logic
 if uploaded_file:
     data_df, summary_df, reset_df = read_file(uploaded_file)
 
-    # Normalize key columns
     if 'FinishTime' in data_df.columns:
         data_df['FinishTime'] = pd.to_datetime(data_df['FinishTime'], errors='coerce', dayfirst=True)
 
@@ -127,6 +128,26 @@ if uploaded_file:
         (data_df['Vendor'] == selected_vendor) & (data_df['Program'] == selected_program)
     ]
 
+    # Period analyzed
+    if 'FinishTime' in filtered_df.columns and not filtered_df['FinishTime'].isna().all():
+        start_date = filtered_df['FinishTime'].min().date()
+        end_date = filtered_df['FinishTime'].max().date()
+        st.markdown(f"""
+        <div style='
+            text-align: center;
+            font-size: 16px;
+            font-weight: 500;
+            color: white;
+            background-color: #2e8b57;
+            padding: 6px 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: inline-block;
+        '>
+            📅 Period analyzed: <strong>{start_date.strftime('%b %d, %Y')}</strong> to <strong>{end_date.strftime('%b %d, %Y')}</strong>
+        </div>
+        """, unsafe_allow_html=True)
+
     # KPIs
     num_stores = filtered_df['Store'].nunique() if 'Store' in filtered_df.columns else 0
     if 'Bay' in filtered_df.columns and filtered_df['Bay'].notna().sum() > 0:
@@ -152,10 +173,9 @@ if uploaded_file:
     col4.metric("📉 Avg. per Bay", avg_maint_per_bay)
     col5.metric("🔁 Resets / Updates", num_resets)
 
-    # Charts
+    # Chart Type
     st.markdown("---")
     st.markdown("### 📈 Charts")
-
     col_chart, _ = st.columns([1, 1])
     with col_chart:
         st.markdown("<span class='label-style'>📌 Select Chart Type</span>", unsafe_allow_html=True)
@@ -164,6 +184,15 @@ if uploaded_file:
             key="chart", label_visibility="collapsed"
         )
 
+    # Theme logic
+    if "Maintenance" in chart_type:
+        selected_template = "plotly_dark"
+        selected_color_scale = "Teal"
+    else:
+        selected_template = "plotly_dark"
+        selected_color_scale = "Blues"
+
+    # Charts
     if chart_type == "Maintenance by Month":
         if 'FinishTime' in filtered_df.columns:
             month_df = filtered_df.dropna(subset=['FinishTime'])
@@ -171,13 +200,11 @@ if uploaded_file:
             chart_df = month_df.groupby('Month').size().reset_index(name='Maintenance Count')
             fig = px.bar(chart_df, x='Month', y='Maintenance Count',
                          title='Maintenance Count per Month',
-                         template='plotly_dark', color='Maintenance Count',
-                         color_continuous_scale='Blues')
-            fig.update_layout(font=dict(color='white'))
+                         template=selected_template, color='Maintenance Count',
+                         color_continuous_scale=selected_color_scale)
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.warning("Column 'FinishTime' not found.")
-
     elif chart_type == "Resets by Program":
         reset_chart_df = reset_df[
             (reset_df['Vendor'].str.upper().str.strip() == selected_vendor) &
@@ -187,24 +214,21 @@ if uploaded_file:
             reset_chart_df = reset_chart_df.groupby('Program').size().reset_index(name='Reset Count')
             fig = px.bar(reset_chart_df, x='Reset Count', y='Program', orientation='h',
                          title='Resets / Updates per Program',
-                         template='plotly_dark', color='Reset Count')
-            fig.update_layout(font=dict(color='white'))
+                         template=selected_template, color='Reset Count',
+                         color_continuous_scale=selected_color_scale)
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("No reset/update data available for this selection.")
-
     elif chart_type == "Maintenance by Store":
         if 'Store' in filtered_df.columns:
             chart_df = filtered_df.groupby('Store').size().reset_index(name='Maintenance Count')
             fig = px.bar(chart_df, x='Store', y='Maintenance Count',
                          title='Maintenance Count by Store',
-                         template='plotly_dark', color='Maintenance Count',
-                         color_continuous_scale='Teal')
-            fig.update_layout(font=dict(color='white'))
+                         template=selected_template, color='Maintenance Count',
+                         color_continuous_scale=selected_color_scale)
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.warning("Column 'Store' not found.")
-
     elif chart_type == "Resets by Store":
         reset_chart_df = reset_df[
             (reset_df['Vendor'].str.upper().str.strip() == selected_vendor) &
@@ -214,14 +238,13 @@ if uploaded_file:
             chart_df = reset_chart_df.groupby('Store').size().reset_index(name='Reset Count')
             fig = px.bar(chart_df, x='Store', y='Reset Count',
                          title='Resets / Updates by Store',
-                         template='plotly_dark', color='Reset Count',
-                         color_continuous_scale='Purples')
-            fig.update_layout(font=dict(color='white'))
+                         template=selected_template, color='Reset Count',
+                         color_continuous_scale=selected_color_scale)
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("No reset/update data available per store for this selection.")
 
-    # Bay Image with Modal
+    # Image
     st.markdown("---")
     st.markdown("### 🖼️ Bay Image")
     image = None
@@ -291,8 +314,7 @@ if uploaded_file:
         st.info(f"No image found for program '{selected_program}'.")
 
 else:
-    st.markdown(
-        """
+    st.markdown("""
         <div style='
             display: flex;
             justify-content: center;
@@ -312,6 +334,4 @@ else:
                 📄 Please upload a valid <strong>.xlsm</strong>, <strong>.xlsx</strong>, or <strong>.csv</strong> file in the sidebar to get started.
             </div>
         </div>
-        """,
-        unsafe_allow_html=True
-    )
+    """, unsafe_allow_html=True)
