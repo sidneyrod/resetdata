@@ -75,8 +75,7 @@ with col2:
             <h1 style='color: #2E8B57; font-weight: 700; font-size: 2.4em; margin: 0;'>Reset Supported Programs</h1>
         </div>
         <hr style='border: 1px solid #2E8B57; margin-top: 10px; width: 100%;'>
-        """,
-        unsafe_allow_html=True
+        """, unsafe_allow_html=True
     )
 
 # Main Logic
@@ -86,7 +85,6 @@ if uploaded_file:
     if 'FinishTime' in data_df.columns:
         data_df['FinishTime'] = pd.to_datetime(data_df['FinishTime'], errors='coerce', dayfirst=True)
 
-    # Style
     st.markdown("""
         <style>
             .label-style {
@@ -105,7 +103,6 @@ if uploaded_file:
         </style>
     """, unsafe_allow_html=True)
 
-    # Selections
     col_v1, col_v2 = st.columns([1, 1])
     with col_v1:
         st.markdown("<span class='label-style'>🔎 Select a Vendor</span>", unsafe_allow_html=True)
@@ -214,7 +211,7 @@ if uploaded_file:
         else:
             st.info("No reset/update data available per store for this selection.")
 
-    # Bay Image
+    # Bay Image with Modal
     st.markdown("---")
     st.markdown("### 🖼️ Bay Image")
     image = None
@@ -224,21 +221,14 @@ if uploaded_file:
             if file.lower().startswith(selected_program.lower()) and file.lower().endswith((".jpg", ".png", ".jpeg")):
                 image_path = os.path.join("images", file)
                 image = Image.open(image_path)
-                image_caption = f"From repository: {file}"
+                image_caption = f"{file}"
                 break
 
     if image:
         encoded_img = pil_image_to_base64(image)
-        st.markdown(
-            f"""
-            <div style='
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                margin-top: 20px;
-                margin-bottom: 10px;
-            '>
-                <img src='data:image/jpeg;base64,{encoded_img}' alt='{image_caption}' style='
+        st.markdown(f"""
+            <style>
+                .zoom-img {{
                     max-height: 80vh;
                     max-width: 100%;
                     width: auto;
@@ -246,14 +236,46 @@ if uploaded_file:
                     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
                     transition: transform 0.3s ease;
                     cursor: zoom-in;
-                '
-                onmouseover="this.style.transform='scale(1.03)'"
-                onmouseout="this.style.transform='scale(1)'"
-                title='{image_caption}' />
+                }}
+                .zoom-img:hover {{
+                    transform: scale(1.03);
+                }}
+                .modal {{
+                    display: none;
+                    position: fixed;
+                    z-index: 9999;
+                    left: 0;
+                    top: 0;
+                    width: 100%;
+                    height: 100%;
+                    overflow: auto;
+                    background-color: rgba(0,0,0,0.9);
+                }}
+                .modal-content {{
+                    display: block;
+                    margin: 5% auto;
+                    max-width: 90%;
+                    max-height: 90vh;
+                    border-radius: 15px;
+                }}
+                .close {{
+                    position: absolute;
+                    top: 20px;
+                    right: 35px;
+                    color: #fff;
+                    font-size: 40px;
+                    font-weight: bold;
+                    cursor: pointer;
+                }}
+            </style>
+            <div style='text-align: center;'>
+                <img src='data:image/jpeg;base64,{encoded_img}' class='zoom-img' onclick="document.getElementById('imgModal').style.display='block'" title='{image_caption}' />
             </div>
-            """,
-            unsafe_allow_html=True
-        )
+            <div id='imgModal' class='modal' onclick="this.style.display='none'">
+                <span class='close' onclick="document.getElementById('imgModal').style.display='none'">&times;</span>
+                <img class='modal-content' src='data:image/jpeg;base64,{encoded_img}' />
+            </div>
+        """, unsafe_allow_html=True)
         st.caption(image_caption)
     else:
         st.info(f"No image found for program '{selected_program}'.")
