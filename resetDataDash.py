@@ -82,8 +82,13 @@ with col2:
 if uploaded_file:
     data_df, summary_df, reset_df = read_file(uploaded_file)
 
+    # Normalize key columns
     if 'FinishTime' in data_df.columns:
         data_df['FinishTime'] = pd.to_datetime(data_df['FinishTime'], errors='coerce', dayfirst=True)
+
+    for col in ['bay number', 'Vendor', 'Program', 'Store']:
+        if col in data_df.columns:
+            data_df[col] = data_df[col].astype(str).str.upper().str.strip()
 
     st.markdown("""
         <style>
@@ -128,12 +133,15 @@ if uploaded_file:
         num_bays = filtered_df['Bay'].nunique()
     elif 'Location' in filtered_df.columns:
         num_bays = filtered_df['Location'].nunique()
+    elif 'bay number' in filtered_df.columns:
+        num_bays = filtered_df['bay number'].nunique()
     else:
         num_bays = 0
     num_maint = len(filtered_df)
     avg_maint_per_bay = round(num_maint / num_bays, 2) if num_bays else 0
     num_resets = len(reset_df[
-        (reset_df['Vendor'] == selected_vendor) & (reset_df['Program'] == selected_program)
+        (reset_df['Vendor'].str.upper().str.strip() == selected_vendor) &
+        (reset_df['Program'].str.upper().str.strip() == selected_program)
     ]) if not reset_df.empty else 0
 
     st.markdown("### 📊 Overview")
@@ -172,7 +180,8 @@ if uploaded_file:
 
     elif chart_type == "Resets by Program":
         reset_chart_df = reset_df[
-            (reset_df['Vendor'] == selected_vendor) & (reset_df['Program'] == selected_program)
+            (reset_df['Vendor'].str.upper().str.strip() == selected_vendor) &
+            (reset_df['Program'].str.upper().str.strip() == selected_program)
         ] if not reset_df.empty else pd.DataFrame()
         if not reset_chart_df.empty:
             reset_chart_df = reset_chart_df.groupby('Program').size().reset_index(name='Reset Count')
@@ -198,7 +207,8 @@ if uploaded_file:
 
     elif chart_type == "Resets by Store":
         reset_chart_df = reset_df[
-            (reset_df['Vendor'] == selected_vendor) & (reset_df['Program'] == selected_program)
+            (reset_df['Vendor'].str.upper().str.strip() == selected_vendor) &
+            (reset_df['Program'].str.upper().str.strip() == selected_program)
         ] if not reset_df.empty else pd.DataFrame()
         if 'Store' in reset_chart_df.columns and not reset_chart_df.empty:
             chart_df = reset_chart_df.groupby('Store').size().reset_index(name='Reset Count')
