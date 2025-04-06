@@ -86,6 +86,7 @@ if uploaded_file:
     if 'FinishTime' in data_df.columns:
         data_df['FinishTime'] = pd.to_datetime(data_df['FinishTime'], errors='coerce', dayfirst=True)
 
+    # Style
     st.markdown("""
         <style>
             .label-style {
@@ -104,6 +105,7 @@ if uploaded_file:
         </style>
     """, unsafe_allow_html=True)
 
+    # Selections
     col_v1, col_v2 = st.columns([1, 1])
     with col_v1:
         st.markdown("<span class='label-style'>🔎 Select a Vendor</span>", unsafe_allow_html=True)
@@ -224,16 +226,33 @@ if uploaded_file:
                 image = Image.open(image_path)
                 image_caption = f"From repository: {file}"
                 break
+
     if image:
         encoded_img = pil_image_to_base64(image)
         st.markdown(
             f"""
-            <div style='display: flex; justify-content: center; align-items: center; margin-top: 20px; margin-bottom: 10px;'>
-                <img src='data:image/jpeg;base64,{encoded_img}' alt='{image_caption}' style='max-width: 600px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4); transition: transform 0.3s ease; cursor: zoom-in;'
-                    onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'"
-                    title='{image_caption}' />
+            <div style='
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                margin-top: 20px;
+                margin-bottom: 10px;
+            '>
+                <img src='data:image/jpeg;base64,{encoded_img}' alt='{image_caption}' style='
+                    max-height: 80vh;
+                    max-width: 100%;
+                    width: auto;
+                    border-radius: 15px;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+                    transition: transform 0.3s ease;
+                    cursor: zoom-in;
+                '
+                onmouseover="this.style.transform='scale(1.03)'"
+                onmouseout="this.style.transform='scale(1)'"
+                title='{image_caption}' />
             </div>
-            """, unsafe_allow_html=True
+            """,
+            unsafe_allow_html=True
         )
         st.caption(image_caption)
     else:
