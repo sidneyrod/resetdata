@@ -15,7 +15,7 @@ with st.sidebar:
     uploaded_file = st.file_uploader("📄 Upload your .xlsm, .xlsx or .csv file", type=["xlsm", "xlsx", "csv"])
     st.markdown("---")
     st.markdown(
-        """
+        '''
         <div style='
             background: linear-gradient(145deg, #2E8B57, #3fa76c);
             padding: 15px;
@@ -31,7 +31,7 @@ with st.sidebar:
             <div>📝 <strong>Designed by</strong><br>Gabriela Reis</div>
             <div style="margin-top: 8px;">💻 <strong>Developed by</strong><br>Sidney Rodrigues</div>
         </div>
-        """,
+        ''',
         unsafe_allow_html=True
     )
 
@@ -63,7 +63,7 @@ logo_base64 = image_to_base64("assets/logo_kent.jpeg")
 col1, col2, col3 = st.columns([1, 6, 1])
 with col2:
     st.markdown(
-        f"""
+        f'''
         <div style='
             display: flex;
             justify-content: center;
@@ -76,11 +76,11 @@ with col2:
             <h1 style='color: #2E8B57; font-weight: 700; font-size: 2.4em; margin: 0;'>Reset Supported Programs</h1>
         </div>
         <hr style='border: 1px solid #2E8B57; margin-top: 10px; width: 100%;'>
-        """,
+        ''',
         unsafe_allow_html=True
     )
 
-# Main Logic
+# Period analyzed - center aligned after header
 if uploaded_file:
     data_df, summary_df, reset_df = read_file(uploaded_file)
 
@@ -90,6 +90,38 @@ if uploaded_file:
     for col in ['bay number', 'Vendor', 'Program', 'Store']:
         if col in data_df.columns:
             data_df[col] = data_df[col].astype(str).str.upper().str.strip()
+
+    default_vendor = data_df['Vendor'].dropna().unique()[0]
+    default_program = data_df[data_df['Vendor'] == default_vendor]['Program'].dropna().unique()[0]
+    filtered_temp = data_df[(data_df['Vendor'] == default_vendor) & (data_df['Program'] == default_program)]
+
+    if 'FinishTime' in filtered_temp.columns:
+        valid_dates_df = filtered_temp[filtered_temp['FinishTime'].notna()]
+        if not valid_dates_df.empty:
+            start_date = valid_dates_df['FinishTime'].min().date()
+            end_date = valid_dates_df['FinishTime'].max().date()
+            st.markdown(f"""
+                <div style='
+                    display: flex;
+                    justify-content: center;
+                    margin-bottom: 20px;
+                    margin-top: -10px;
+                '>
+                    <div style='
+                        width: 60%;
+                        text-align: center;
+                        font-size: 16px;
+                        font-weight: 500;
+                        color: white;
+                        background-color: #2e8b57;
+                        padding: 10px 18px;
+                        border-radius: 12px;
+                        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+                    '>
+                        📅 Period analyzed: <strong>{start_date.strftime('%b %d, %Y')}</strong> to <strong>{end_date.strftime('%b %d, %Y')}</strong>
+                    </div>
+                </div>
+""", unsafe_allow_html=True)
 
     st.markdown("""
         <style>
@@ -127,26 +159,6 @@ if uploaded_file:
     filtered_df = data_df[
         (data_df['Vendor'] == selected_vendor) & (data_df['Program'] == selected_program)
     ]
-
-    # Period analyzed
-    if 'FinishTime' in filtered_df.columns and not filtered_df['FinishTime'].isna().all():
-        start_date = filtered_df['FinishTime'].min().date()
-        end_date = filtered_df['FinishTime'].max().date()
-        st.markdown(f"""
-        <div style='
-            text-align: center;
-            font-size: 16px;
-            font-weight: 500;
-            color: white;
-            background-color: #2e8b57;
-            padding: 6px 12px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            display: inline-block;
-        '>
-            📅 Period analyzed: <strong>{start_date.strftime('%b %d, %Y')}</strong> to <strong>{end_date.strftime('%b %d, %Y')}</strong>
-        </div>
-        """, unsafe_allow_html=True)
 
     # KPIs
     num_stores = filtered_df['Store'].nunique() if 'Store' in filtered_df.columns else 0
